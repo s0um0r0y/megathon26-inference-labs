@@ -310,7 +310,7 @@ class UlcaClient:
         return resp.json()
 
     async def asr(self, wav_b64: str, lang: Language) -> AsrResult:
-        """Speech to text. Expects 16 kHz mono WAV (frontend/src/services/microphone.ts)."""
+        """Speech to text. Expects 16 kHz mono WAV."""
         cfg = await self._config("asr", lang)
         body = await self._compute(
             cfg,

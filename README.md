@@ -3,78 +3,66 @@
 ## Prerequisites
 
 - Linux or macOS
-- Python 3.11 or newer, managed with [uv](https://docs.astral.sh/uv/)
-- Node.js 20 or newer and npm
-- An Android phone with Chrome, on the same network as the computer (optional, for testing on a phone)
-- [Ollama](https://ollama.com) if you run the vision model locally (optional)
+- [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 automatically, as set in `backend/uv.toml` and `backend/.python-version`)
+- OpenSSL, to create a development certificate
+- Optional: [Ollama](https://ollama.com) to run the vision model locally
+- Optional: an Android phone with Chrome, on the same network as the computer
+
+The frontend is static HTML, CSS and JavaScript. It has no build step, and the backend serves it.
 
 ## 1. Configure
 
 ```bash
-cp backend/.env.example backend/.env
+cd backend
+cp .env.example .env
 ```
 
 Fill in `backend/.env`:
 
-- **Language services:** `CANVAS_ACCESS_TOKEN`, or `CANVAS_EMAIL` and `CANVAS_PASSWORD`, plus the `CANVAS_*_MODEL` IDs from the IIIT Bhashini sandbox.
+- **Language services (IIIT Bhashini sandbox):** `CANVAS_ACCESS_TOKEN`, or `CANVAS_EMAIL` and `CANVAS_PASSWORD`, plus the `CANVAS_*_MODEL` IDs.
 - **Vision model:** pick one of the following.
   - Local Ollama: `VISION_PROVIDER=openai_compat`, `OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_MODEL=qwen2.5vl:7b`
-  - Hosted (for example Groq): `VISION_PROVIDER=openai_compat` with that service's `OPENAI_BASE_URL`, `OPENAI_MODEL` and `OPENAI_API_KEY`
+  - Hosted: `VISION_PROVIDER=openai_compat` with that service's `OPENAI_BASE_URL`, `OPENAI_MODEL` and `OPENAI_API_KEY`
   - Claude: `VISION_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`
 
-If you use Ollama, start it and download the model:
+## 2. Start Ollama (local vision model only)
 
 ```bash
-ollama serve &
+OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_KEEP_ALIVE=30m ollama serve &
 ollama pull qwen2.5vl:7b
 ```
 
-## 2. Backend
+## 3. Install and run
 
 ```bash
 cd backend
 uv sync
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Development certificate (camera and microphone need HTTPS on a phone)
+mkdir -p certs
+openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=signsaathi-dev" \
+  -keyout certs/dev.key -out certs/dev.crt
+
+uv run uvicorn main:app --host 0.0.0.0 --port 8443 \
+  --ssl-keyfile certs/dev.key --ssl-certfile certs/dev.crt
 ```
 
-To check it, run `curl http://localhost:8000/api/health`. It lists which services are configured.
+Open `https://localhost:8443` on the computer, or `https://<computer-LAN-IP>:8443` on the phone, and accept the certificate warning once. The app detects the backend automatically. To check which services are configured, open `https://localhost:8443/api/health`.
 
-To run the tests:
+To run the app without HTTPS on the computer only:
+
+```bash
+uv run uvicorn main:app --port 8000      # then open http://localhost:8000
+```
+
+## 4. Tests
 
 ```bash
 cd backend
 uv run pytest -q
 ```
 
-If pytest fails at startup with errors from other installed packages (for example a ROS install), prefix the commands with `env -u PYTHONPATH`.
-
-## 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open `https://localhost:5173` on the computer. On the phone, open `https://<computer-LAN-IP>:5173` and accept the self-signed certificate warning once. The camera and microphone only work over HTTPS. The dev server forwards `/api` and `/ws` to the backend on port 8000.
-
-To run the checks and tests:
-
-```bash
-cd frontend
-npm run typecheck
-npm test
-```
-
-## 4. Production build
-
-```bash
-cd frontend
-npm run build      # output in frontend/dist
-npm run preview    # serves the build on https://localhost:4173
-```
-
-To serve `frontend/dist` behind any HTTPS web server, forward `/api` to the backend and `/ws` to the backend as a WebSocket.
+If pytest fails at startup with errors from other installed packages (for example a ROS install), run `env -u PYTHONPATH uv run pytest -q`.
 
 ## License
 

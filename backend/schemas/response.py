@@ -1,4 +1,4 @@
-"""Response schemas. These mirror frontend/src/services/api.ts - keep them in sync."""
+"""Response schemas for /api/analyze. /api/ask (the PWA) maps these in api/ask.py:to_pwa."""
 
 from enum import StrEnum
 from typing import Literal

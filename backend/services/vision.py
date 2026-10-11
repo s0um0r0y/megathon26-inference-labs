@@ -279,6 +279,7 @@ class VisionClient:
     ) -> dict:
         resp = await self._http.post(
             API_URL,
+            timeout=self._s.vision_timeout_s,
             headers={
                 "x-api-key": self._s.anthropic_api_key,
                 "anthropic-version": "2023-06-01",
@@ -365,13 +366,15 @@ class VisionClient:
             }
             return {**body, "messages": msgs, "response_format": {"type": "json_object"}}
 
-        resp = await self._http.post(url, headers=headers, json=with_format(self._schema_supported))
+        # Per-request timeout: the shared client's default is shorter than a local model needs.
+        timeout = self._s.vision_timeout_s
+        resp = await self._http.post(url, headers=headers, json=with_format(self._schema_supported), timeout=timeout)
         rejected = resp.status_code == 400 and "response_format" in resp.text
         looped = resp.status_code >= 500 and "repeat" in resp.text  # Ollama grammar loop
         if self._schema_supported and (rejected or looped):
             log.info("%s failed with json_schema; falling back to json_object", self.label)
             self._schema_supported = False
-            resp = await self._http.post(url, headers=headers, json=with_format(False))
+            resp = await self._http.post(url, headers=headers, json=with_format(False), timeout=timeout)
         if resp.status_code >= 400:
             raise VisionError(f"{self.label} {resp.status_code}: {resp.text[:300]}")
         try:

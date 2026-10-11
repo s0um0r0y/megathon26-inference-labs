@@ -28,6 +28,9 @@ class FakeBhashini:
     asr_conf: float = 0.85
     calls: list = field(default_factory=list)
 
+    def services(self):
+        return {"asr_te": self.configured, "nmt_te_en": self.configured}
+
     async def asr(self, wav_b64, lang):
         self.calls.append(("asr", lang))
         return AsrResult(self.asr_text, self.asr_conf)
@@ -50,6 +53,7 @@ class FakeVision:
     configured: bool = True
     delay: float = 0.0
     seen: dict = field(default_factory=dict)
+    label: str = "fake-vision"
 
     async def answer(self, image, question_en, intent, profile, ocr_text, map_context):
         self.seen.update(question=question_en, intent=intent, profile=profile, ocr=ocr_text, maps=map_context)
@@ -60,6 +64,10 @@ class FakeVision:
 @dataclass
 class FakeOcr:
     result: OcrResult
+
+    @property
+    def provider(self):
+        return self.result.provider
 
     async def read(self, image):
         return self.result

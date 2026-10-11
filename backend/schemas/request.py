@@ -1,4 +1,4 @@
-"""Request schemas. These mirror frontend/src/services/api.ts - keep them in sync."""
+"""Request schemas for /api/analyze and sessions. /api/ask takes plain form fields (api/ask.py)."""
 
 from enum import StrEnum
 from typing import Literal
@@ -30,7 +30,7 @@ class Location(BaseModel):
 
 
 class FrameQuality(BaseModel):
-    """Stats from frontend/src/workers/frameQuality.worker.ts for the uploaded frame."""
+    """Client-side frame-quality stats for the uploaded frame (optional)."""
 
     brightness: float = Field(ge=0, le=255)
     blur_score: float = Field(ge=0)
