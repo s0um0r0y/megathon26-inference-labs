@@ -1,0 +1,22 @@
+{
+  "description": "Model says it is safe to cross: the sentence must be removed and the caution forced.",
+  "intent": "traffic_signal",
+  "answer": {
+    "answerable": true,
+    "short": "The pedestrian signal shows a green walking man. It is safe to cross now.",
+    "simpler": "Green man. You can cross.",
+    "steps": ["Walk now across the zebra crossing."],
+    "sign_type": "traffic_signal",
+    "confidence": 0.9
+  },
+  "confidence": 0.85,
+  "evidence": [],
+  "expect": {
+    "force_retake": false,
+    "use_traffic_caution": true,
+    "short": "The pedestrian signal shows a green walking man.",
+    "simpler": "Green man.",
+    "steps": [],
+    "issues_include": ["unsafe_crossing_in_short", "unsafe_crossing_in_simpler", "unsafe_crossing_in_steps"]
+  }
+}

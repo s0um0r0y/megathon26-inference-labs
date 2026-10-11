@@ -1,0 +1,19 @@
+{
+  "description": "Answer-first: a multi-sentence short answer is trimmed and the rest moved to details.",
+  "intent": "shop_info",
+  "answer": {
+    "answerable": true,
+    "short": "**This is Apollo Pharmacy.** It is open from 8 am to 10 pm. It also sells groceries.",
+    "details": ["Phone number is on the board."],
+    "sign_type": "shop_board",
+    "confidence": 0.9
+  },
+  "confidence": 0.85,
+  "evidence": [],
+  "expect": {
+    "force_retake": false,
+    "short": "This is Apollo Pharmacy.",
+    "details": ["It is open from 8 am to 10 pm.", "It also sells groceries.", "Phone number is on the board."],
+    "issues_include": ["short_trimmed"]
+  }
+}

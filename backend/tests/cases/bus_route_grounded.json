@@ -1,0 +1,8 @@
+{
+  "description": "Route named in the answer appears on the sign: answer stands.",
+  "intent": "bus_route",
+  "answer": {"answerable": true, "short": "Bus 219 goes to Secunderabad station; it is the third route listed.", "sign_type": "bus_board", "confidence": 0.9},
+  "confidence": 0.8,
+  "evidence": ["10H Koti\n5K/M Mehdipatnam\n219 Secunderabad"],
+  "expect": {"force_retake": false, "use_traffic_caution": false, "issues_include": []}
+}

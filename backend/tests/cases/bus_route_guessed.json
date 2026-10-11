@@ -1,0 +1,8 @@
+{
+  "description": "Model names a route not on the sign or in map data: never a silent guess.",
+  "intent": "bus_route",
+  "answer": {"answerable": true, "short": "Take bus 21 to the station.", "sign_type": "bus_board", "confidence": 0.9},
+  "confidence": 0.8,
+  "evidence": ["219 Secunderabad\n10H Koti"],
+  "expect": {"force_retake": true, "issues_include": ["unverified_routes:21"]}
+}

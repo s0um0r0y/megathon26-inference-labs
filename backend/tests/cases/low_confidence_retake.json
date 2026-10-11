@@ -1,0 +1,8 @@
+{
+  "description": "Overall confidence below the retake threshold forces a retake even if the model answered.",
+  "intent": "shop_info",
+  "answer": {"answerable": true, "short": "This is a pharmacy.", "sign_type": "shop_board", "confidence": 0.3},
+  "confidence": 0.2,
+  "evidence": [],
+  "expect": {"force_retake": true, "issues_include": ["low_confidence"]}
+}

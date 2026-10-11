@@ -1,0 +1,8 @@
+{
+  "description": "A generic question about a photo of a signal still gets signal safety rules.",
+  "intent": "read_sign",
+  "answer": {"answerable": true, "short": "The light is red for pedestrians.", "sign_type": "traffic_signal", "confidence": 0.9},
+  "confidence": 0.85,
+  "evidence": [],
+  "expect": {"force_retake": false, "use_traffic_caution": true, "short": "The light is red for pedestrians."}
+}

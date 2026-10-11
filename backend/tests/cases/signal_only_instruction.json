@@ -1,0 +1,8 @@
+{
+  "description": "Model only says 'go ahead': nothing safe remains, so retake instead of answering.",
+  "intent": "traffic_signal",
+  "answer": {"answerable": true, "short": "Go ahead.", "sign_type": "traffic_signal", "confidence": 0.9},
+  "confidence": 0.85,
+  "evidence": [],
+  "expect": {"force_retake": true, "use_traffic_caution": true, "issues_include": ["no_safe_signal_description"]}
+}
