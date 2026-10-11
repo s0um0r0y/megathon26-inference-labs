@@ -1,0 +1,12 @@
+# uv settings for the SignSaathi backend.
+# uv reads settings from this file instead of [tool.uv] in pyproject.toml.
+# (Project fields such as `package` must stay in pyproject.toml.)
+
+# Always use a uv-managed CPython (3.12, pinned in .python-version), never the
+# system Python 3.9 or the interpreter on the ROS PYTHONPATH.
+python-preference = "only-managed"
+python-downloads = "automatic"
+
+# Install from the lockfile exactly as resolved.
+link-mode = "copy"
+compile-bytecode = true

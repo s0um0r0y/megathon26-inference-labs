@@ -1,18 +1,847 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <!-- Zoom stays enabled: pinch-zoom is an accessibility need and a condition signal. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b3d2e" />
-    <meta name="description" content="Point your phone at a sign and ask about it in English, Hindi or Telugu." />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <title>SignSaathi</title>
-  </head>
-  <body>
-    <noscript>SignSaathi needs JavaScript to use the camera and microphone.</noscript>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E5A44">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<style>[hidden]{display:none!important}html,body{margin:0}</style>
+<script>window.__PWA=1</script>
+</head>
+<body>
+<title>SignSaathi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Telugu:wght@400;700&display=swap">
+<style>
+/* Layout: two columns on desktop (sign + ask | answer + compare + pipeline), one column on phones.
+   Look: municipal street-sign green and auto-rickshaw yellow, set in Atkinson Hyperlegible, a face drawn for low vision. */
+:root{
+  --bg:#F1F5F1; --surface:#FFFFFF; --surface2:#E4ECE6; --fg:#10201A; --muted:#4A5E54;
+  --line:#C5D3C9; --primary:#0E5A44; --on-primary:#FFFFFF; --accent:#FFC20E; --on-accent:#1B1500;
+  --focus:#1A4FD1; --good:#0E7A3E; --warn:#9A5B00; --bad:#B3261E; --shadow:0 1px 2px rgba(16,32,26,.08);
+  --font:"Atkinson Hyperlegible","Noto Sans Devanagari","Noto Sans Telugu","Nirmala UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1410; --surface:#13211A; --surface2:#1B2D24; --fg:#E8F1EA; --muted:#A3B8AB;
+  --line:#2B4236; --primary:#3DBE8E; --on-primary:#06150E; --accent:#FFC20E; --on-accent:#1B1500;
+  --focus:#FFC20E; --good:#4CD38A; --warn:#F0B34A; --bad:#FF8A80; --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1410; --surface:#13211A; --surface2:#1B2D24; --fg:#E8F1EA; --muted:#A3B8AB;
+  --line:#2B4236; --primary:#3DBE8E; --on-primary:#06150E; --accent:#FFC20E; --on-accent:#1B1500;
+  --focus:#FFC20E; --good:#4CD38A; --warn:#F0B34A; --bad:#FF8A80; --shadow:none; color-scheme:dark}
+*{box-sizing:border-box}
+html{font-size:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:1.0625rem;line-height:1.5;padding-inline:16px;padding-block:12px 40px}
+.wrap{max-width:70rem;margin-inline:auto}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:0;background:var(--accent);color:var(--on-accent);padding:.5rem 1rem;border-radius:8px;z-index:50}
+.skip:focus{left:8px;top:8px}
+h1,h2,h3{margin:0;line-height:1.2;text-wrap:balance}
+h2{font-size:1.2rem}
+p{margin:0}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.25rem;justify-content:space-between;padding-block:.5rem 1rem}
+.brand{display:flex;align-items:center;gap:.75rem;min-width:0}
+.brand svg{flex:none}
+.brand h1{font-size:1.6rem;letter-spacing:-.01em}
+.brand p{color:var(--muted);font-size:.95rem}
+.seg{display:inline-flex;border:2px solid var(--primary);border-radius:12px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:.55rem .95rem;min-height:2.75rem;cursor:pointer;font-weight:700;color:var(--primary)}
+.seg button+button{border-left:2px solid var(--primary)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.setup{display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;align-items:flex-end;padding:.9rem 1rem;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:1rem}
+.setup .grp{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.lbl{font-size:.9rem;color:var(--muted);font-weight:700}
+.iconbtn{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem;min-height:2.75rem;padding:.5rem .9rem;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;font-weight:700}
+
+/* banner */
+.banner{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;background:var(--accent);color:var(--on-accent);border-radius:14px;padding:.8rem 1rem;margin-bottom:1rem}
+.banner p{flex:1 1 16rem;font-weight:700}
+.banner .btn{background:var(--on-accent);color:var(--accent);border-color:var(--on-accent)}
+.banner .btn.ghost{background:transparent;color:var(--on-accent)}
+
+/* layout */
+.app{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;align-items:start}
+@media (min-width:900px){.app{grid-template-columns:minmax(0,27rem) minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:1rem;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:var(--shadow);min-width:0}
+.card>h2{margin-bottom:.6rem}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3rem;padding:.55rem 1.1rem;border-radius:12px;border:2px solid var(--primary);background:var(--surface);color:var(--primary);font-weight:700;cursor:pointer}
+.btn.fill{background:var(--primary);color:var(--on-primary)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{min-height:2.75rem;padding:.4rem .85rem}
+.row{display:flex;flex-wrap:wrap;gap:.6rem}
+
+/* viewfinder */
+.viewport{position:relative;aspect-ratio:8/5;max-width:100%;background:#0A0F0C;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.viewport img,.viewport video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.br{position:absolute;width:26px;height:26px;border:4px solid var(--accent);pointer-events:none}
+.br.tl{left:12px;top:12px;border-right:0;border-bottom:0;border-top-left-radius:8px}
+.br.tr{right:12px;top:12px;border-left:0;border-bottom:0;border-top-right-radius:8px}
+.br.bl{left:12px;bottom:56px;border-right:0;border-top:0;border-bottom-left-radius:8px}
+.br.brr{right:12px;bottom:56px;border-left:0;border-top:0;border-bottom-right-radius:8px}
+.qbar{position:absolute;left:0;right:0;bottom:0;background:rgba(6,14,10,.82);color:#fff;padding:.5rem .8rem;display:flex;flex-direction:column;gap:.3rem;min-height:44px}
+.qbar .qt{font-weight:700;font-size:.95rem}
+.meter{height:6px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:#4CD38A;transition:width .25s}
+.meter i.fair{background:#F0B34A}.meter i.unclear{background:#FF8A80}
+.demo-note{font-size:.85rem;color:var(--muted)}
+
+/* signs picker */
+.signs{display:grid;grid-template-columns:repeat(auto-fill,minmax(7.2rem,1fr));gap:.6rem}
+.thumb{display:flex;flex-direction:column;gap:.35rem;text-align:left;padding:.4rem;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;min-width:0}
+.thumb img{width:100%;aspect-ratio:8/5;object-fit:cover;border-radius:7px;display:block}
+.thumb span{font-size:.88rem;font-weight:700;line-height:1.2}
+.thumb[aria-pressed="true"]{border-color:var(--primary);box-shadow:inset 0 0 0 2px var(--primary)}
+
+/* ask */
+.mic{width:100%;min-height:4.25rem;border-radius:16px;border:0;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:1.2rem;display:flex;align-items:center;justify-content:center;gap:.7rem;cursor:pointer}
+.mic[aria-pressed="true"]{background:var(--bad);color:#fff}
+.askform{display:flex;gap:.5rem;margin-top:.7rem}
+.askform input{flex:1;min-width:0;min-height:3rem;border:2px solid var(--line);border-radius:12px;padding:.5rem .8rem;background:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+.chip{min-height:2.75rem;padding:.4rem .9rem;border-radius:999px;border:2px solid var(--primary);background:var(--surface);color:var(--primary);font-weight:700;cursor:pointer}
+
+/* answer */
+.answer{border:2px solid var(--primary)}
+.answer .q{color:var(--muted);font-size:.95rem;margin-bottom:.4rem}
+.answer .txt{font-size:1.6rem;line-height:1.35;font-weight:700;text-wrap:pretty;max-width:38ch}
+.answer .more{margin-top:.8rem;font-size:1.15rem;padding-top:.8rem;border-top:1px dashed var(--line);max-width:46ch}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.9rem}
+.pill{display:inline-flex;align-items:center;gap:.4rem;padding:.2rem .7rem;border-radius:999px;font-size:.9rem;font-weight:700;background:var(--surface2)}
+.pill.clear{color:var(--good)}.pill.fair{color:var(--warn)}.pill.unclear{color:var(--bad)}
+.offer{margin-top:.8rem;color:var(--muted)}
+.read{margin-top:.8rem;padding:.7rem .9rem;border-radius:10px;background:var(--surface2);font-size:.95rem}
+.read b{display:block;margin-bottom:.2rem}
+.read ul{margin:.2rem 0 0;padding-left:1.1rem}
+.fail{border-color:var(--bad)}
+.confirm{border:2px dashed var(--warn);background:var(--surface)}
+body.p-ageing .answer .txt{font-size:2rem;max-width:30ch}
+body.p-hearing .answer .txt{font-size:1.9rem}
+.flash{animation:flash .9s ease-out 2}
+@keyframes flash{0%{box-shadow:0 0 0 0 var(--accent),inset 0 0 0 999px rgba(255,194,14,.35)}100%{box-shadow:0 0 0 18px transparent,inset 0 0 0 999px transparent}}
+@media (prefers-reduced-motion:reduce){.flash{animation:none;outline:6px solid var(--accent)}.meter i{transition:none}}
+
+/* compare / pipeline */
+.cmp{display:grid;grid-template-columns:minmax(0,1fr);gap:.8rem;margin-top:.8rem}
+@media (min-width:620px){.cmp{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cmp>div{padding:.8rem;border-radius:10px;background:var(--surface2);min-width:0}
+.cmp h3{font-size:1rem;margin-bottom:.4rem}
+.cmp .w{font-size:.85rem;color:var(--muted);margin-top:.5rem}
+.stages{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-direction:column;gap:.35rem}
+.stages li{display:grid;grid-template-columns:1.4rem minmax(0,1fr) auto;gap:.5rem;align-items:center;font-size:.95rem}
+.stages .dot{width:.9rem;height:.9rem;border-radius:50%;border:2px solid var(--line);background:transparent}
+.stages li.done .dot{background:var(--good);border-color:var(--good)}
+.stages li.fail .dot{background:var(--bad);border-color:var(--bad)}
+.stages li.run .dot{border-color:var(--accent);background:var(--accent)}
+.stages .ms{font-variant-numeric:tabular-nums;color:var(--muted)}
+
+/* settings */
+.settings{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:40;padding:16px}
+@media (min-width:700px){.settings{align-items:center}}
+.settings .panel{background:var(--surface);border-radius:16px;max-width:30rem;width:100%;max-height:100%;overflow:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.9rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field input[type=text],.field select{min-height:2.75rem;border:2px solid var(--line);border-radius:10px;padding:.4rem .6rem;background:var(--bg)}
+.field input[type=range]{width:100%;min-height:2.5rem}
+.check{display:flex;gap:.6rem;align-items:center;min-height:2.75rem}
+.check input{width:1.4rem;height:1.4rem}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(32rem,calc(100% - 32px));background:var(--fg);color:var(--bg);padding:.7rem 1rem;border-radius:12px;font-weight:700;z-index:60}
+.speakbar{display:flex;gap:.5rem;align-items:center;margin-top:.8rem}
+</style>
+
+<a class="skip" href="#main" data-i18n="skip">Skip to main content</a>
+<div class="wrap">
+<header class="top">
+  <div class="brand">
+    <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#0E5A44"/><rect x="21" y="8" width="6" height="34" rx="2" fill="#FFC20E"/><path d="M10 12h22l6 5-6 5H10z" fill="#fff"/><path d="M38 26H16l-6 5 6 5h22z" fill="#FFC20E" opacity=".95"/></svg>
+    <div><h1>SignSaathi</h1><p data-i18n="tag">Read city signs aloud, in your language</p></div>
+  </div>
+  <div class="grp" role="group" aria-labelledby="langlbl" style="display:flex;flex-direction:column;gap:.3rem">
+    <span class="lbl" id="langlbl" data-i18n="langLbl">Language</span>
+    <div class="seg" id="langSeg">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="hi" aria-pressed="false" lang="hi">हिन्दी</button>
+      <button type="button" data-lang="te" aria-pressed="false" lang="te">తెలుగు</button>
+    </div>
+  </div>
+</header>
+
+<section class="setup" aria-label="Profile">
+  <div class="grp" role="group" aria-labelledby="proflbl">
+    <span class="lbl" id="proflbl" data-i18n="profLbl">Make answers work for</span>
+    <div class="seg" id="profSeg">
+      <button type="button" data-prof="visual" aria-pressed="true" data-i18n="p_visual">Blind or low vision</button>
+      <button type="button" data-prof="hearing" aria-pressed="false" data-i18n="p_hearing">Deaf or hard of hearing</button>
+      <button type="button" data-prof="ageing" aria-pressed="false" data-i18n="p_ageing">Older adult</button>
+    </div>
+  </div>
+  <button type="button" class="iconbtn" id="openSettings" aria-haspopup="dialog">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
+    <span data-i18n="settings">Settings</span>
+  </button>
+</section>
+
+<div class="banner" id="banner" role="status" hidden>
+  <p id="bannerText"></p>
+  <div class="row"><button type="button" class="btn sm" id="bannerYes" data-i18n="yes">Yes</button><button type="button" class="btn sm ghost" id="bannerNo" data-i18n="no">No</button></div>
+</div>
+
+<main id="main" class="app">
+  <div class="col">
+    <section class="card" aria-labelledby="hSign">
+      <h2 id="hSign" data-i18n="signH">Sign in view</h2>
+      <div class="viewport" id="viewport">
+        <img id="frameImg" alt="">
+        <video id="video" playsinline muted hidden></video>
+        <span class="br tl"></span><span class="br tr"></span><span class="br bl"></span><span class="br brr"></span>
+        <div class="qbar">
+          <div class="qt" id="qText" role="status" aria-live="polite"></div>
+          <div class="meter" aria-hidden="true"><i id="qFill"></i></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:.7rem">
+        <button type="button" class="btn fill" id="btnCam" data-i18n="camera">Open camera</button>
+        <button type="button" class="btn" id="btnCapture" hidden data-i18n="capture">Capture now</button>
+        <label class="btn" id="btnUploadLbl" for="fileIn" tabindex="0" role="button" data-i18n="upload">Upload photo</label>
+        <input type="file" id="fileIn" accept="image/*" class="sr">
+      </div>
+      <p class="demo-note" style="margin-top:.6rem" id="demoNote" data-i18n="demoNote">Sample signs below work without a camera. Distances and bus times on them are examples.</p>
+      <h3 class="lbl" style="margin:.9rem 0 .5rem" id="trySign" data-i18n="trySign">Try a sample sign</h3>
+      <div class="signs" id="signs" role="group" aria-labelledby="trySign"></div>
+    </section>
+
+    <section class="card" aria-labelledby="hAsk">
+      <h2 id="hAsk" data-i18n="askH">Ask a question</h2>
+      <button type="button" class="mic" id="btnMic" aria-pressed="false">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <span id="micText" data-i18n="mic">Ask by voice</span>
+      </button>
+      <form class="askform" id="askForm">
+        <label class="sr" for="askIn" data-i18n="askLbl">Type your question</label>
+        <input id="askIn" type="text" autocomplete="off" data-i18n-ph="ph" placeholder="Or type a question">
+        <button type="submit" class="btn fill" data-i18n="send">Ask</button>
+      </form>
+      <div class="chips" id="chips" role="group" aria-label="Phrase board"></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card confirm" id="confirmBox" hidden aria-live="assertive">
+      <p id="confirmText" style="font-weight:700;font-size:1.2rem"></p>
+      <div class="row" style="margin-top:.7rem"><button type="button" class="btn fill" id="cYes" data-i18n="yes">Yes</button><button type="button" class="btn" id="cRetry" data-i18n="retry">Say it again</button></div>
+    </section>
+
+    <section class="card answer" id="answerCard" aria-labelledby="hAns">
+      <h2 id="hAns" data-i18n="ansH">Answer</h2>
+      <div id="live" aria-live="polite">
+        <p class="q" id="ansQ"></p>
+        <p class="txt" id="ansTxt"></p>
+        <p class="more" id="ansMore" hidden></p>
+      </div>
+      <div class="meta"><span class="pill" id="ansConf"></span><span class="pill" id="ansSpeak" hidden></span></div>
+      <p class="offer" id="offer" hidden></p>
+      <div id="readBox" class="read" hidden></div>
+      <div class="row" style="margin-top:1rem">
+        <button type="button" class="btn fill" id="bRepeat" data-i18n="repeat">Repeat</button>
+        <button type="button" class="btn" id="bSimple" data-i18n="simpler">Explain simpler</button>
+        <button type="button" class="btn" id="bMore" data-i18n="more">Tell me more</button>
+        <button type="button" class="btn" id="bMute" aria-pressed="false" data-i18n="mute">Mute voice</button>
+        <button type="button" class="btn" id="bStop" hidden data-i18n="stop">Stop speaking</button>
+        <button type="button" class="btn fill" id="bRetake" hidden data-i18n="retakeBtn">Retake photo</button>
+      </div>
+    </section>
+
+    <section class="card" id="announce" hidden aria-labelledby="hAnn">
+      <h2 id="hAnn">Bus announcement alert</h2>
+      <p class="demo-note">Demo: type the bus you are waiting for. When an announcement mentions it, the phone vibrates and the screen flashes.</p>
+      <div class="askform"><label class="sr" for="watchIn">Bus number to watch</label><input id="watchIn" type="text" value="219" inputmode="text"><button type="button" class="btn fill" id="bAnn">Play sample announcement</button></div>
+      <p class="txt" id="annTxt" style="margin-top:.8rem;font-size:1.3rem;font-weight:700" aria-live="assertive"></p>
+    </section>
+
+    <section class="card" aria-labelledby="hCmp">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 id="hCmp" style="margin:0">Plain assistant vs SignSaathi</h2>
+        <button type="button" class="btn sm" id="bCmp" aria-expanded="false" aria-controls="cmpBox">Compare</button>
+      </div>
+      <div class="cmp" id="cmpBox" hidden></div>
+    </section>
+
+    <section class="card" aria-labelledby="hPipe">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 id="hPipe" style="margin:0">Pipeline</h2>
+        <span class="demo-note" id="pipeNote"></span>
+      </div>
+      <ol class="stages" id="stages"></ol>
+    </section>
+  </div>
+</main>
+</div>
+
+<div class="settings" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="hSet">
+  <div class="panel">
+    <h2 id="hSet" data-i18n="settings">Settings</h2>
+    <div class="field"><label for="setSpeed" data-i18n="speed">Speech speed</label><input id="setSpeed" type="range" min="0.6" max="1.4" step="0.1" value="1"></div>
+    <div class="field"><label for="setSize" data-i18n="textSize">Text size</label>
+      <select id="setSize"><option value="1">Normal</option><option value="1.25">Large</option><option value="1.5">Extra large</option></select></div>
+    <label class="check"><input type="checkbox" id="setOffline"><span>Simulate a network drop</span></label>
+    <div class="field"><label for="setBackend">Backend URL (optional)</label><input id="setBackend" type="text" placeholder="http://localhost:8000" inputmode="url"></div>
+    <p class="demo-note">With a backend set, photos from the camera or an upload are sent to POST /api/ask. Sample signs always run locally.</p>
+    <div class="row"><button type="button" class="btn fill" id="setClose" data-i18n="close">Done</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- interface text (falls back to English) ---------- */
+const T={
+en:{skip:"Skip to main content",tag:"Read city signs aloud, in your language",langLbl:"Language",profLbl:"Make answers work for",
+p_visual:"Blind or low vision",p_hearing:"Deaf or hard of hearing",p_ageing:"Older adult",settings:"Settings",
+signH:"Sign in view",camera:"Open camera",capture:"Capture now",upload:"Upload photo",
+demoNote:"Sample signs below work without a camera. Distances and bus times on them are examples.",trySign:"Try a sample sign",
+s_bus:"Bus stop board",s_pharm:"Pharmacy board",s_signal:"Pedestrian signal",s_platform:"Metro platform",s_blur:"Blurry shop board",
+askH:"Ask a question",mic:"Ask by voice",micOn:"Listening… tap to stop",askLbl:"Type your question",ph:"Or type a question",send:"Ask",
+q_read:"What does this say?",q_route:"Which bus goes to Secunderabad?",q_open:"Is it open now?",q_cross:"Can I cross?",q_exit:"Where is the exit?",
+ansH:"Answer",repeat:"Repeat",simpler:"Explain simpler",more:"Tell me more",mute:"Mute voice",unmute:"Turn voice on",stop:"Stop speaking",retakeBtn:"Retake photo",
+yes:"Yes",no:"No",retry:"Say it again",close:"Done",speed:"Speech speed",textSize:"Text size",
+conf:"Reading",c_clear:"clear",c_fair:"fairly clear",c_unclear:"unclear",
+readFrom:"Read from the sign",offerMore:"Want more detail? Tap Tell me more.",asked:"You asked",
+frameOk:"Sign in frame",qLabel:"Photo",
+cue_hold:"Hold the phone still.",cue_dark:"Too dark. Move to a lighter spot.",cue_bright:"Too bright. Tilt away from the glare.",cue_ok:"Steady and clear.",
+fail_blur:"I can see a board but I can't read it safely. Move the phone a little closer, hold still, and try again. I won't guess.",
+fail_dark:"The photo is too dark to read. Move to a lighter spot and try again. I won't guess.",
+fail_bright:"The photo has too much glare to read. Tilt the phone away from the light and try again. I won't guess.",
+heard:"I heard:",heardQ:"Is that right?",pickFirst:"Choose a sample sign or open the camera first.",
+noVoiceIn:"Voice input isn't available in this browser. Type a question or tap a phrase.",micBlocked:"The microphone is blocked here. Type a question or tap a phrase.",
+camBlocked:"The camera isn't available here. Use a sample sign or upload a photo.",noTts:"This device has no voice for this language. Captions are shown instead.",
+badPhoto:"Could not open that photo. Try a JPEG or PNG, or take a photo with the camera.",uploadDemo:"Photo quality checked. Reading arbitrary photos needs the backend. Add its URL in Settings, or try a sample sign.",
+offline:"No network. Reading the board on this phone only:",thinking:"Working on it…",
+ban_ageing:"You replayed an answer twice. Shall I switch to slower, larger, simpler guidance?",
+ban_hearing:"You turned the voice off. Shall I switch to captions with vibration alerts?",
+ban_visual:"You've used voice only. Shall I speak each answer and keep the screen simple?",
+ann:"Announcement: next bus arriving, route 219 to Secunderabad Station.",annHit:"Bus {n} announced! Get ready.",annMiss:"Announcement did not mention bus {n}."},
+hi:{skip:"मुख्य भाग पर जाएँ",badPhoto:"यह फ़ोटो नहीं खुली। JPEG या PNG आज़माएँ, या कैमरे से फ़ोटो लें।",tag:"शहर के साइनबोर्ड, आपकी भाषा में",langLbl:"भाषा",profLbl:"जवाब इनके लिए ढालें",
+p_visual:"नेत्रहीन / कम दिखता है",p_hearing:"बधिर / कम सुनाई देता है",p_ageing:"बुज़ुर्ग",settings:"सेटिंग",
+signH:"सामने का साइन",camera:"कैमरा खोलें",capture:"अभी खींचें",upload:"फ़ोटो अपलोड करें",
+demoNote:"नीचे के नमूना साइन बिना कैमरे के चलते हैं। इन पर दूरी और बस का समय उदाहरण हैं।",trySign:"नमूना साइन आज़माएँ",
+s_bus:"बस स्टॉप बोर्ड",s_pharm:"दवा दुकान का बोर्ड",s_signal:"पैदल सिग्नल",s_platform:"मेट्रो प्लेटफ़ॉर्म",s_blur:"धुंधला दुकान बोर्ड",
+askH:"सवाल पूछें",mic:"बोलकर पूछें",micOn:"सुन रहा हूँ… रोकने के लिए दबाएँ",askLbl:"अपना सवाल लिखें",ph:"या सवाल लिखें",send:"पूछें",
+q_read:"इस पर क्या लिखा है?",q_route:"सिकंदराबाद कौन सी बस जाती है?",q_open:"क्या अभी खुला है?",q_cross:"क्या मैं सड़क पार कर सकता हूँ?",q_exit:"निकास कहाँ है?",
+ansH:"जवाब",repeat:"दोहराएँ",simpler:"आसान करके बताएँ",more:"और बताएँ",mute:"आवाज़ बंद करें",unmute:"आवाज़ चालू करें",stop:"बोलना रोकें",retakeBtn:"फ़ोटो दोबारा लें",
+yes:"हाँ",no:"नहीं",retry:"दोबारा बोलें",close:"हो गया",
+conf:"पढ़ाई",c_clear:"साफ़",c_fair:"काफ़ी साफ़",c_unclear:"अस्पष्ट",
+readFrom:"साइन से पढ़ा",offerMore:"और जानकारी चाहिए? “और बताएँ” दबाएँ।",asked:"आपने पूछा",
+frameOk:"साइन फ़्रेम में है",qLabel:"फ़ोटो",
+cue_hold:"फ़ोन को स्थिर रखिए।",cue_dark:"बहुत अँधेरा है। रोशनी वाली जगह जाइए।",cue_bright:"बहुत चमक है। फ़ोन को रोशनी से हटाकर घुमाइए।",cue_ok:"स्थिर और साफ़।",
+fail_blur:"मुझे बोर्ड दिख रहा है पर मैं उसे सुरक्षित रूप से पढ़ नहीं पा रहा। फ़ोन थोड़ा पास लाइए, स्थिर रखिए और फिर कोशिश कीजिए। मैं अंदाज़ा नहीं लगाऊँगा।",
+fail_dark:"फ़ोटो बहुत अँधेरी है। रोशनी वाली जगह जाकर फिर कोशिश कीजिए। मैं अंदाज़ा नहीं लगाऊँगा।",
+fail_bright:"फ़ोटो में बहुत चमक है। फ़ोन को रोशनी से हटाकर फिर कोशिश कीजिए। मैं अंदाज़ा नहीं लगाऊँगा।",
+heard:"मैंने सुना:",heardQ:"क्या यह सही है?",pickFirst:"पहले कोई नमूना साइन चुनें या कैमरा खोलें।",
+noVoiceIn:"इस ब्राउज़र में बोलकर पूछना उपलब्ध नहीं है। सवाल लिखें या कोई वाक्य दबाएँ।",micBlocked:"यहाँ माइक्रोफ़ोन बंद है। सवाल लिखें या कोई वाक्य दबाएँ।",
+camBlocked:"यहाँ कैमरा उपलब्ध नहीं है। नमूना साइन या फ़ोटो अपलोड कीजिए।",noTts:"इस डिवाइस में इस भाषा की आवाज़ नहीं है। जवाब लिखकर दिखाया गया है।",
+offline:"नेटवर्क नहीं है। सिर्फ़ इस फ़ोन पर बोर्ड पढ़ रहा हूँ:",thinking:"देख रहा हूँ…",
+ban_ageing:"आपने जवाब दो बार दोहराया। क्या धीमा, बड़ा और आसान मार्गदर्शन चालू करूँ?",
+ban_hearing:"आपने आवाज़ बंद की। क्या कैप्शन और कंपन अलर्ट चालू करूँ?",
+ban_visual:"आप सिर्फ़ आवाज़ से चला रहे हैं। क्या हर जवाब बोलूँ और स्क्रीन सरल रखूँ?",
+ann:"घोषणा: अगली बस आ रही है, रूट 219, सिकंदराबाद स्टेशन।",annHit:"बस {n} की घोषणा हुई! तैयार हो जाइए।",annMiss:"घोषणा में बस {n} का नाम नहीं था।"},
+te:{skip:"ప్రధాన భాగానికి వెళ్ళండి",badPhoto:"ఈ ఫోటో తెరవలేకపోయాను. JPEG లేదా PNG ప్రయత్నించండి, లేదా కెమెరాతో ఫోటో తీయండి.",tag:"నగర సైన్‌బోర్డులు, మీ భాషలో",langLbl:"భాష",profLbl:"సమాధానాలు వీరి కోసం",
+p_visual:"అంధులు / తక్కువ చూపు",p_hearing:"బధిరులు / తక్కువ వినికిడి",p_ageing:"వృద్ధులు",settings:"సెట్టింగ్‌లు",
+signH:"ఎదురుగా ఉన్న సైన్",camera:"కెమెరా తెరవండి",capture:"ఇప్పుడు తీయండి",upload:"ఫోటో అప్‌లోడ్ చేయండి",
+demoNote:"కింది నమూనా సైన్‌లు కెమెరా లేకుండా పనిచేస్తాయి. వాటిపై దూరం, బస్ సమయాలు ఉదాహరణలు.",trySign:"నమూనా సైన్ ప్రయత్నించండి",
+s_bus:"బస్ స్టాప్ బోర్డు",s_pharm:"మందుల షాపు బోర్డు",s_signal:"పాదచారుల సిగ్నల్",s_platform:"మెట్రో ప్లాట్‌ఫామ్",s_blur:"మసకబారిన షాపు బోర్డు",
+askH:"ప్రశ్న అడగండి",mic:"మాట్లాడి అడగండి",micOn:"వింటున్నాను… ఆపడానికి నొక్కండి",askLbl:"మీ ప్రశ్న రాయండి",ph:"లేదా ప్రశ్న రాయండి",send:"అడగండి",
+q_read:"దీనిపై ఏమి రాసి ఉంది?",q_route:"సికింద్రాబాద్ ఏ బస్సు వెళ్తుంది?",q_open:"ఇప్పుడు తెరిచి ఉందా?",q_cross:"రోడ్డు దాటవచ్చా?",q_exit:"నిష్క్రమణ ఎక్కడ?",
+ansH:"సమాధానం",repeat:"మళ్ళీ చెప్పు",simpler:"సులభంగా చెప్పు",more:"ఇంకా చెప్పు",mute:"వాయిస్ ఆపండి",unmute:"వాయిస్ ఆన్ చేయండి",stop:"మాట్లాడటం ఆపు",retakeBtn:"ఫోటో మళ్ళీ తీయండి",
+yes:"అవును",no:"కాదు",retry:"మళ్ళీ చెప్పండి",close:"అయింది",
+conf:"చదివిన స్పష్టత",c_clear:"స్పష్టం",c_fair:"కొంత స్పష్టం",c_unclear:"అస్పష్టం",
+readFrom:"సైన్ నుండి చదివినది",offerMore:"ఇంకా వివరాలు కావాలా? “ఇంకా చెప్పు” నొక్కండి.",asked:"మీరు అడిగినది",
+frameOk:"సైన్ ఫ్రేమ్‌లో ఉంది",qLabel:"ఫోటో",
+cue_hold:"ఫోన్‌ను కదలకుండా పట్టుకోండి.",cue_dark:"చాలా చీకటిగా ఉంది. వెలుతురు ఉన్న చోటికి వెళ్ళండి.",cue_bright:"చాలా మెరుపు ఉంది. ఫోన్‌ను వెలుతురు నుండి తిప్పండి.",cue_ok:"స్థిరంగా, స్పష్టంగా ఉంది.",
+fail_blur:"బోర్డు కనిపిస్తోంది కానీ దాన్ని సురక్షితంగా చదవలేను. ఫోన్‌ను కొంచెం దగ్గరకు తెచ్చి, కదలకుండా పట్టుకుని మళ్ళీ ప్రయత్నించండి. నేను ఊహించి చెప్పను.",
+fail_dark:"ఫోటో చాలా చీకటిగా ఉంది. వెలుతురు ఉన్న చోట మళ్ళీ ప్రయత్నించండి. నేను ఊహించి చెప్పను.",
+fail_bright:"ఫోటోలో చాలా మెరుపు ఉంది. ఫోన్‌ను వెలుతురు నుండి తిప్పి మళ్ళీ ప్రయత్నించండి. నేను ఊహించి చెప్పను.",
+heard:"నాకు వినిపించింది:",heardQ:"ఇది సరైనదేనా?",pickFirst:"ముందు నమూనా సైన్ ఎంచుకోండి లేదా కెమెరా తెరవండి.",
+noVoiceIn:"ఈ బ్రౌజర్‌లో మాట్లాడి అడగడం లేదు. ప్రశ్న రాయండి లేదా ఒక వాక్యం నొక్కండి.",micBlocked:"ఇక్కడ మైక్రోఫోన్ నిలిపివేయబడింది. ప్రశ్న రాయండి లేదా ఒక వాక్యం నొక్కండి.",
+camBlocked:"ఇక్కడ కెమెరా అందుబాటులో లేదు. నమూనా సైన్ వాడండి లేదా ఫోటో అప్‌లోడ్ చేయండి.",noTts:"ఈ పరికరంలో ఈ భాషకు వాయిస్ లేదు. సమాధానం రాతలో చూపించాను.",
+offline:"నెట్‌వర్క్ లేదు. ఈ ఫోన్‌లోనే బోర్డు చదువుతున్నాను:",thinking:"చూస్తున్నాను…",
+ban_ageing:"మీరు సమాధానాన్ని రెండుసార్లు మళ్ళీ విన్నారు. నెమ్మదిగా, పెద్దగా, సులభంగా చెప్పమంటారా?",
+ban_hearing:"మీరు వాయిస్ ఆపారు. క్యాప్షన్లు, వైబ్రేషన్ అలర్ట్‌లు ఆన్ చేయమంటారా?",
+ban_visual:"మీరు వాయిస్ మాత్రమే వాడుతున్నారు. ప్రతి సమాధానం చదివి వినిపించి, స్క్రీన్ సరళంగా ఉంచమంటారా?",
+ann:"ప్రకటన: తదుపరి బస్సు వస్తోంది, రూట్ 219, సికింద్రాబాద్ స్టేషన్.",annHit:"బస్ {n} ప్రకటించారు! సిద్ధంగా ఉండండి.",annMiss:"ప్రకటనలో బస్ {n} లేదు."}
+};
+const LANGCODE={en:"en-IN",hi:"hi-IN",te:"te-IN"};
+
+/* ---------- sample signs (drawn as SVG so they work offline) ---------- */
+function uri(inner,blur){
+  const f=blur?'<filter id="b"><feGaussianBlur stdDeviation="7"/></filter>':'';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400" font-family="Arial, Nirmala UI, Noto Sans Telugu, sans-serif">'+f+'<g'+(blur?' filter="url(#b)"':'')+'>'+inner+'</g></svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+const busInner='<rect width="640" height="400" fill="#0E5A44"/><rect width="640" height="88" fill="#FFC20E"/>'+
+ '<text x="28" y="42" font-size="30" font-weight="700" fill="#10201A">BUS STOP · AMEERPET</text><text x="28" y="76" font-size="24" fill="#10201A">బస్ స్టాప్</text>'+
+ [["9X","Gachibowli","6 min"],["127K","Koti","12 min"],["219","Secunderabad Stn","4 min"]].map((r,i)=>{const y=120+i*88;
+ return '<rect x="28" y="'+y+'" width="104" height="60" rx="10" fill="#fff"/><text x="80" y="'+(y+42)+'" text-anchor="middle" font-size="34" font-weight="700" fill="#0E5A44">'+r[0]+'</text>'+
+ '<text x="154" y="'+(y+42)+'" font-size="32" fill="#fff">'+r[1]+'</text><text x="612" y="'+(y+42)+'" text-anchor="end" font-size="30" font-weight="700" fill="#FFC20E">'+r[2]+'</text>';}).join('');
+const pharmInner='<rect width="640" height="400" fill="#B9C9BE"/><rect x="24" y="40" width="592" height="320" rx="18" fill="#fff" stroke="#B3261E" stroke-width="10"/>'+
+ '<rect x="74" y="124" width="36" height="100" fill="#B3261E"/><rect x="44" y="156" width="96" height="36" fill="#B3261E"/>'+
+ '<text x="170" y="180" font-size="68" font-weight="700" fill="#10201A">SRI SAI</text><text x="170" y="252" font-size="68" font-weight="700" fill="#10201A">MEDICALS</text>'+
+ '<text x="170" y="318" font-size="36" font-weight="700" fill="#0E5A44">Open 9 AM – 10 PM</text>';
+const sigInner='<rect width="640" height="400" fill="#4A5963"/><rect x="190" y="24" width="260" height="352" rx="24" fill="#0B0E10" stroke="#555" stroke-width="4"/>'+
+ '<g fill="#FF3B30"><circle cx="320" cy="92" r="24"/><rect x="298" y="124" width="44" height="72" rx="12"/><rect x="302" y="196" width="15" height="52"/><rect x="323" y="196" width="15" height="52"/></g>'+
+ '<g fill="#14361F"><circle cx="320" cy="276" r="20"/><rect x="302" y="302" width="36" height="40" rx="10"/><rect x="304" y="342" width="12" height="24"/><rect x="324" y="342" width="12" height="24"/></g>';
+const platInner='<rect width="640" height="400" fill="#0B3D91"/><text x="36" y="84" font-size="40" font-weight="700" fill="#fff">PLATFORM</text>'+
+ '<text x="30" y="250" font-size="190" font-weight="700" fill="#FFC20E">2</text><text x="230" y="160" font-size="32" fill="#fff">Towards</text><text x="230" y="226" font-size="62" font-weight="700" fill="#fff">Miyapur</text>'+
+ '<rect y="290" width="640" height="110" fill="#fff"/><text x="36" y="360" font-size="52" font-weight="700" fill="#0B3D91">EXIT</text><text x="200" y="360" font-size="52" font-weight="700" fill="#0B3D91">Gate 3  →</text>';
+
+/* ---------- answers: [main, simpler, more] per intent and language ---------- */
+function pharmOpen(){
+  const h=new Date().getHours(), open=h>=9&&h<22;
+  return open?{
+    en:["Yes, it is open now. The board says 9 AM to 10 PM.","Yes, it is open.","Hours come from the board. I can't check holidays."],
+    hi:["हाँ, अभी खुली है। बोर्ड पर सुबह 9 से रात 10 बजे तक लिखा है।","हाँ, खुली है।","समय बोर्ड से लिया है। छुट्टी के दिन मैं नहीं जाँच सकता।"],
+    te:["అవును, ఇప్పుడు తెరిచి ఉంది. బోర్డు ప్రకారం ఉదయం 9 నుండి రాత్రి 10 వరకు.","అవును, తెరిచి ఉంది.","సమయాలు బోర్డు నుండి తీసుకున్నాను. సెలవు రోజులను నేను తనిఖీ చేయలేను."]
+  }:{
+    en:["No, it looks closed now. The board says it opens at 9 AM and closes at 10 PM.","No, it is closed now. It opens at 9 in the morning.","Hours come from the board. I can't check holidays."],
+    hi:["नहीं, अभी बंद लग रही है। बोर्ड के अनुसार सुबह 9 बजे खुलती है और रात 10 बजे बंद होती है।","नहीं, अभी बंद है। सुबह 9 बजे खुलेगी।","समय बोर्ड से लिया है। छुट्टी के दिन मैं नहीं जाँच सकता।"],
+    te:["లేదు, ఇప్పుడు మూసి ఉన్నట్టు ఉంది. బోర్డు ప్రకారం ఉదయం 9కి తెరుస్తారు, రాత్రి 10కి మూసేస్తారు.","లేదు, ఇప్పుడు మూసి ఉంది. ఉదయం 9కి తెరుస్తారు.","సమయాలు బోర్డు నుండి తీసుకున్నాను. సెలవు రోజులను నేను తనిఖీ చేయలేను."]
+  };
+}
+const SCENES={
+bus:{uri:uri(busInner),conf:"c_clear",chips:["q_read","q_route"],
+ ocr:["BUS STOP · AMEERPET","9X  Gachibowli  6 min","127K  Koti  12 min","219  Secunderabad Stn  4 min"],
+ match:[["route",/secunderabad|station|219|సికింద్రాబాద్|స్టేషన్|सिकंदराबाद|स्टेशन/i]],
+ raw:"This image shows a bus stop information board titled Bus Stop Ameerpet, with Telugu text above it that reads bus stop. The board has a green background with a yellow header band. Below the header is a table of three bus routes. The first row lists route 9X, destination Gachibowli, next arrival in 6 minutes. The second row lists route 127K, destination Koti, next arrival in 12 minutes. The third row lists route 219, destination Secunderabad Station, next arrival in 4 minutes. Route numbers appear in white boxes on the left, destinations in white text in the middle, and arrival times in yellow on the right. Let me know if you would like more detail about any route or the layout of the board.",
+ ans:{
+  read:{en:["Bus stop board with three routes: 9X, 127K and 219.","This is a bus board. It lists buses 9X, 127K and 219.","9X goes to Gachibowli in 6 minutes. 127K goes to Koti in 12 minutes. 219 goes to Secunderabad Station in 4 minutes."],
+        hi:["बस स्टॉप का बोर्ड। तीन रूट हैं: 9X, 127K और 219।","यह बस का बोर्ड है। इसमें बस 9X, 127K और 219 हैं।","9X गचिबौली जाती है, 6 मिनट में। 127K कोटी जाती है, 12 मिनट में। 219 सिकंदराबाद स्टेशन जाती है, 4 मिनट में।"],
+        te:["బస్ స్టాప్ బోర్డు. మూడు రూట్లు ఉన్నాయి: 9X, 127K, 219.","ఇది బస్ బోర్డు. ఇందులో బస్సులు 9X, 127K, 219 ఉన్నాయి.","9X గచ్చిబౌలికి వెళ్తుంది, 6 నిమిషాల్లో. 127K కోఠీకి వెళ్తుంది, 12 నిమిషాల్లో. 219 సికింద్రాబాద్ స్టేషన్‌కు వెళ్తుంది, 4 నిమిషాల్లో."]},
+  route:{en:["Bus 219 goes to Secunderabad Station. It is the third route listed, arriving in 4 minutes.","Take bus 219. It comes in 4 minutes.","The board shows 219 arriving in 4 minutes. Other routes here: 9X to Gachibowli and 127K to Koti."],
+         hi:["बस 219 सिकंदराबाद स्टेशन जाती है। यह सूची में तीसरा रूट है, 4 मिनट में आएगी।","बस 219 लीजिए। यह 4 मिनट में आएगी।","बोर्ड के अनुसार 219 चार मिनट में आएगी। यहाँ की दूसरी बसें: 9X गचिबौली और 127K कोटी।"],
+         te:["బస్ 219 సికింద్రాబాద్ స్టేషన్‌కు వెళ్తుంది. ఇది జాబితాలో మూడవ రూట్, 4 నిమిషాల్లో వస్తుంది.","బస్ 219 ఎక్కండి. ఇది 4 నిమిషాల్లో వస్తుంది.","బోర్డు ప్రకారం 219 నాలుగు నిమిషాల్లో వస్తుంది. ఇక్కడి ఇతర బస్సులు: 9X గచ్చిబౌలి, 127K కోఠీ."]}}},
+pharm:{uri:uri(pharmInner),conf:"c_clear",chips:["q_read","q_open"],
+ ocr:["SRI SAI MEDICALS","Open 9 AM – 10 PM"],
+ match:[["open",/\bopen|closed|timing|hours|खुल|बंद|समय|తెర|మూస|సమయ/i]],
+ raw:"The image shows a storefront sign for a pharmacy. The sign has a white background with a thick red border. On the left side there is a red cross symbol, commonly used to represent medical services. To the right of the cross, large black bold text reads Sri Sai Medicals, split over two lines. Below this, in green bold text, are the opening hours, which read Open 9 AM to 10 PM. The overall design is simple and high contrast. If you would like, I can tell you more about the colors or layout, or help you work out whether the shop is likely open at a specific time.",
+ ans:{
+  read:{en:["Sri Sai Medicals, a pharmacy. About 10 o'clock, 20 metres ahead.","This is a medical shop called Sri Sai Medicals.","The board says open 9 AM to 10 PM. Ask me if it is open now."],
+        hi:["श्री साई मेडिकल्स, दवा की दुकान। लगभग 10 बजे की दिशा में, 20 मीटर आगे।","यह श्री साई मेडिकल्स नाम की दवा की दुकान है।","बोर्ड पर सुबह 9 से रात 10 बजे तक खुला लिखा है। पूछिए कि अभी खुला है या नहीं।"],
+        te:["శ్రీ సాయి మెడికల్స్, మందుల షాపు. సుమారు 10 గంటల దిశలో, 20 మీటర్ల ముందు.","ఇది శ్రీ సాయి మెడికల్స్ అనే మందుల షాపు.","బోర్డు ప్రకారం ఉదయం 9 నుండి రాత్రి 10 వరకు తెరిచి ఉంటుంది. ఇప్పుడు తెరిచి ఉందా అని అడగండి."]},
+  open:pharmOpen}},
+signal:{uri:uri(sigInner),conf:"c_clear",chips:["q_cross"],
+ ocr:["Pedestrian signal: red standing figure"],
+ match:[],
+ raw:"The image shows a pedestrian crossing signal mounted in a dark rectangular housing. The upper section displays a red illuminated figure of a person standing still, which indicates that pedestrians should not cross. The lower section shows an unlit, dark green walking figure. Based on this, the signal currently appears to be red for pedestrians. Please note that you should always check for traffic before crossing the road.",
+ ans:{
+  read:{en:["The signal shows a red standing figure. Please wait, and listen for traffic. I can't confirm that it is safe to cross.","The signal is red. Please wait. Listen for traffic before you cross.","I only describe the signal. Check the traffic yourself or ask someone nearby for help."],
+        hi:["सिग्नल पर लाल खड़ा आदमी दिख रहा है। कृपया रुकिए और ट्रैफिक की आवाज़ सुनिए। मैं पक्का नहीं कह सकता कि सड़क पार करना सुरक्षित है।","सिग्नल लाल है। कृपया रुकिए। पार करने से पहले ट्रैफिक सुनिए।","मैं सिर्फ़ सिग्नल बताता हूँ। ट्रैफिक खुद जाँचिए या पास के किसी व्यक्ति से मदद लीजिए।"],
+        te:["సిగ్నల్‌పై ఎరుపు రంగు నిలబడిన బొమ్మ కనిపిస్తోంది. దయచేసి ఆగండి, ట్రాఫిక్ శబ్దం వినండి. రోడ్డు దాటడం సురక్షితమని నేను నిర్ధారించలేను.","సిగ్నల్ ఎరుపు. దయచేసి ఆగండి. దాటే ముందు ట్రాఫిక్ వినండి.","నేను సిగ్నల్‌ను మాత్రమే వివరిస్తాను. ట్రాఫిక్‌ను మీరే చూసుకోండి లేదా దగ్గరలో ఉన్నవారి సహాయం తీసుకోండి."]}}},
+platform:{uri:uri(platInner),conf:"c_clear",chips:["q_read","q_exit"],
+ ocr:["PLATFORM 2","Towards Miyapur","EXIT → Gate 3"],
+ match:[["exit",/exit|gate|निकास|बाहर|నిష్క్రమ|గేట్/i]],
+ raw:"This image shows a metro station information sign with a blue background. The word Platform appears in white at the top left, and a very large yellow number 2 sits below it. To the right, white text reads Towards, followed by the destination Miyapur in large bold white letters. Along the bottom of the sign is a white band containing blue text that says Exit and Gate 3 with an arrow pointing to the right. This indicates that the exit for Gate 3 is in that direction.",
+ ans:{
+  read:{en:["Platform 2, trains towards Miyapur.","This is platform 2. Trains go to Miyapur.","The sign also shows Exit with an arrow to the right, Gate 3."],
+        hi:["प्लेटफ़ॉर्म 2, मियापुर की ओर जाने वाली ट्रेनें।","यह प्लेटफ़ॉर्म 2 है। ट्रेनें मियापुर जाती हैं।","साइन पर दाईं ओर तीर के साथ निकास, गेट 3 भी लिखा है।"],
+        te:["ప్లాట్‌ఫామ్ 2, మియాపూర్ వైపు వెళ్లే రైళ్లు.","ఇది ప్లాట్‌ఫామ్ 2. రైళ్లు మియాపూర్ వెళ్తాయి.","సైన్‌పై కుడివైపు బాణంతో నిష్క్రమణ, గేట్ 3 కూడా ఉంది."]},
+  exit:{en:["Exit is to your right, Gate 3. Follow the arrow.","Exit is on the right. Gate 3.","This is read from the sign. Use the tactile path and ask station staff if you are unsure."],
+        hi:["निकास आपके दाईं ओर है, गेट 3। तीर की दिशा में जाइए।","निकास दाईं ओर है। गेट 3।","यह साइन से पढ़ा गया है। अनिश्चित हों तो टैक्टाइल पथ और स्टेशन स्टाफ़ की मदद लीजिए।"],
+        te:["నిష్క్రమణ మీ కుడివైపు ఉంది, గేట్ 3. బాణం చూపిన వైపు వెళ్ళండి.","నిష్క్రమణ కుడివైపు. గేట్ 3.","ఇది సైన్ నుండి చదివినది. సందేహం ఉంటే టాక్టైల్ దారిని అనుసరించండి, స్టేషన్ సిబ్బందిని అడగండి."]}}},
+blur:{uri:uri(pharmInner,true),conf:"c_unclear",chips:[],ocr:[],match:[],raw:"",ans:{}}
+};
+const ORDER=["bus","pharm","signal","platform","blur"];
+const STAGES=[["Voice or typed question",220],["Bhashini ASR + sign OCR",340],["Bhashini translation to English",90],["Reasoning (vision + location)",610],["Accessibility adapter + safety gate",40],["Bhashini translation back",90],["Speech and captions",260]];
+
+/* ---------- state ---------- */
+const S={lang:"en",prof:"visual",scene:null,source:null,blob:null,quality:null,blocked:false,entry:null,variant:"a",muted:false,speed:1,scale:1,offline:false,backend:"",
+  sig:{repeat:0,voice:0,taps:0},declined:{},speaking:false,stream:null,qLoop:0,pendingProf:null,lastQ:"",lastKey:"read",timer:0,ttsWarned:false};
+function store(k,v){try{if(v===undefined)return localStorage.getItem("ss_"+k);localStorage.setItem("ss_"+k,v)}catch(e){return null}}
+const t=k=>(T[S.lang]&&T[S.lang][k])||T.en[k]||k;
+
+function toast(msg){const el=$("#toast");el.textContent=msg;el.hidden=false;clearTimeout(S.timer);S.timer=setTimeout(()=>{el.hidden=true},4500)}
+
+/* ---------- static text ---------- */
+function applyI18n(){
+  document.documentElement.lang=S.lang;
+  $$("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(T.en[k]!==undefined)el.textContent=t(k)});
+  $$("[data-i18n-ph]").forEach(el=>{el.placeholder=t(el.dataset.i18nPh)});
+  $("#bMute").textContent=S.muted?t("unmute"):t("mute");
+  $("#micText").textContent=S.listening?t("micOn"):t("mic");
+  renderSigns();renderChips();renderQuality();
+  if(S.entry)renderAnswer();
+}
+
+/* ---------- sign picker and chips ---------- */
+function renderSigns(){
+  const box=$("#signs");box.innerHTML="";
+  ORDER.forEach(id=>{
+    const b=document.createElement("button");b.type="button";b.className="thumb";b.dataset.id=id;
+    b.setAttribute("aria-pressed",String(S.scene===id));
+    b.innerHTML='<img alt="" src="'+SCENES[id].uri+'"><span>'+t("s_"+id)+'</span>';
+    b.addEventListener("click",()=>{S.sig.taps++;loadScene(id)});
+    box.appendChild(b);
+  });
+}
+function renderChips(){
+  const box=$("#chips");box.innerHTML="";
+  const sc=S.scene&&SCENES[S.scene];
+  const keys=sc&&!S.blocked?sc.chips:(S.source&&S.source!=="sample"&&!S.blocked?["q_read"]:[]);
+  keys.forEach(k=>{const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=t(k);
+    b.addEventListener("click",()=>{S.sig.taps++;ask(t(k),{key:k.slice(2)})});box.appendChild(b)});
+}
+
+/* ---------- frame-quality check (real pixels) ---------- */
+const mc=document.createElement("canvas");mc.width=192;mc.height=120;
+const mx=mc.getContext("2d",{willReadFrequently:true});
+let prevGray=null;
+function measure(el){
+  mx.drawImage(el,0,0,192,120);
+  const d=mx.getImageData(0,0,192,120).data,n=192*120,g=new Float32Array(n);let sum=0;
+  for(let i=0;i<n;i++){const v=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];g[i]=v;sum+=v}
+  let acc=0,acc2=0,c=0;
+  for(let y=1;y<119;y++)for(let x=1;x<191;x++){const i=y*192+x,l=4*g[i]-g[i-1]-g[i+1]-g[i-192]-g[i+192];acc+=l;acc2+=l*l;c++}
+  const mean=acc/c,blur=acc2/c-mean*mean;
+  let diff=0;if(prevGray){for(let i=0;i<n;i+=7)diff+=Math.abs(g[i]-prevGray[i]);diff/=Math.ceil(n/7)}else diff=99;
+  prevGray=g;
+  return{blur,bright:sum/n,diff};
+}
+function judge(m){
+  let cue="ok",level="clear";
+  if(m.bright<38){cue="dark";level="unclear"}
+  else if(m.bright>248){cue="bright";level="unclear"}
+  else if(m.blur<40){cue="hold";level="unclear"}
+  else if(m.blur<120){level="fair"}
+  return{level,cue,blur:m.blur,diff:m.diff};
+}
+function renderQuality(){
+  const q=S.quality,txt=$("#qText"),fill=$("#qFill");
+  if(!q){txt.textContent="";fill.style.width="0";return}
+  const pct=Math.max(6,Math.min(100,q.blur/3));
+  fill.style.width=pct+"%";fill.className=q.level;
+  txt.textContent=t("qLabel")+": "+t("c_"+q.level)+". "+t("cue_"+q.cue);
+}
+
+/* ---------- loading a frame ---------- */
+async function loadScene(id){
+  stopCamera();cancelSpeech();
+  const sc=SCENES[id];S.scene=id;S.source="sample";S.blob=null;
+  const img=$("#frameImg");img.hidden=false;$("#video").hidden=true;
+  img.alt=t("s_"+id);
+  await new Promise(r=>{img.onload=r;img.onerror=r;img.src=sc.uri});
+  prevGray=null;S.quality=judge(measure(img));
+  S.blocked=S.quality.level==="unclear";
+  $("#btnCapture").hidden=true;
+  renderSigns();renderChips();renderQuality();
+  S.entry=null;$("#readBox").hidden=true;
+  if(S.blocked){showFailure(S.quality.cue)}
+  else{
+    const lines=sc.ocr.map(l=>"<li>"+l+"</li>").join("");
+    S.readHtml='<b>'+t("readFrom")+'</b><ul>'+lines+'</ul>';
+    $("#readBox").innerHTML=S.readHtml;$("#readBox").hidden=false;
+    $("#ansQ").textContent="";$("#ansTxt").textContent=t("frameOk")+": "+t("s_"+id)+".";
+    $("#ansMore").hidden=true;$("#offer").hidden=true;
+    setConf(sc.conf);$("#bRetake").hidden=true;$("#answerCard").classList.remove("fail");
+    if(S.prof==="visual"&&!S.muted&&S.userAct)speak(t("frameOk")+". "+t("s_"+id)+".");
+  }
+}
+function showFailure(cue){
+  const key="fail_"+(cue==="dark"?"dark":cue==="bright"?"bright":"blur");
+  S.entry={a:t(key),s:t(key),m:"",failure:true};S.variant="a";
+  renderAnswer();setConf("c_unclear");$("#answerCard").classList.add("fail");$("#bRetake").hidden=false;
+  runPipeline(true);
+  if(!S.muted&&S.prof!=="hearing")speak(t(key));
+  if(S.prof==="hearing"){vibrate([300,120,300]);flash()}
+}
+function setConf(k){const p=$("#ansConf");p.textContent=t("conf")+": "+t(k);p.className="pill "+k.slice(2)}
+
+/* ---------- camera ---------- */
+async function startCamera(){
+  S.userAct=true;
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("none");
+    const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+    S.stream=st;const v=$("#video");v.srcObject=st;v.hidden=false;$("#frameImg").hidden=true;await v.play();
+    S.scene=null;S.source="camera";S.blocked=false;S.entry=null;$("#btnCapture").hidden=false;renderSigns();renderChips();
+    let good=0,lastCue=0;prevGray=null;
+    clearInterval(S.qLoop);
+    S.qLoop=setInterval(()=>{
+      if(!v.videoWidth)return;
+      const q=judge(measure(v));S.quality=q;renderQuality();
+      const now=Date.now();
+      if(q.level==="unclear"||q.diff>5){good=0;if(now-lastCue>3500){lastCue=now;const c=q.cue==="ok"?"hold":q.cue;if(S.prof==="visual")speak(t("cue_"+c));vibrate([60])}}
+      else{good+=250;if(good>=1200){capture()}}
+    },250);
+    toast(t("cue_hold"));
+  }catch(e){toast(t("camBlocked"))}
+}
+function stopCamera(){clearInterval(S.qLoop);if(S.stream){S.stream.getTracks().forEach(x=>x.stop());S.stream=null}$("#video").hidden=true;$("#btnCapture").hidden=true}
+function capture(){
+  const v=$("#video");if(!v.videoWidth)return;
+  const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);
+  const q=S.quality;stopCamera();
+  c.toBlob(b=>{S.blob=b;const img=$("#frameImg");img.src=c.toDataURL("image/jpeg",.85);img.hidden=false;img.alt="Captured photo";
+    vibrate([120]);afterPhoto(q)},"image/jpeg",.85);
+}
+function afterPhoto(q){
+  S.source="photo";S.scene=null;S.quality=q;S.blocked=q.level==="unclear";renderSigns();renderQuality();renderChips();
+  $("#readBox").hidden=true;
+  if(S.blocked){showFailure(q.cue)}
+  else{$("#answerCard").classList.remove("fail");$("#bRetake").hidden=true;setConf("c_"+q.level);
+    $("#ansQ").textContent="";$("#ansTxt").textContent=S.backend?t("frameOk")+".":t("uploadDemo");$("#ansMore").hidden=true;$("#offer").hidden=true;S.entry=null}
+}
+$("#fileIn").addEventListener("change",async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;S.userAct=true;stopCamera();
+  const url=URL.createObjectURL(f),img=$("#frameImg");
+  await new Promise(r=>{img.onload=r;img.onerror=r;img.src=url});
+  if(!img.naturalWidth){URL.revokeObjectURL(url);toast(t("badPhoto"));deliver(t("badPhoto"));return}
+  img.hidden=false;img.alt="Uploaded photo";S.blob=f;
+  prevGray=null;afterPhoto(judge(measure(img)));e.target.value="";
+});
+$("#btnUploadLbl").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#fileIn").click()}});
+
+/* ---------- speech out ---------- */
+const hasTts="speechSynthesis" in window;
+function pickVoice(code){if(!hasTts)return null;const vs=speechSynthesis.getVoices();const c=code.toLowerCase();
+  return vs.find(v=>v.lang.toLowerCase().replace("_","-")===c)||vs.find(v=>v.lang.toLowerCase().startsWith(c.slice(0,2)))||null}
+function cancelSpeech(){if(hasTts)speechSynthesis.cancel();if(S.audio){S.audio.pause();S.audio=null}S.speakSeq=(S.speakSeq||0)+1;setSpeaking(false)}
+function setSpeaking(b){S.speaking=b;$("#bStop").hidden=!b;const p=$("#ansSpeak");p.hidden=!b;p.textContent="♪ Speaking";}
+/* Bhashini TTS from the backend when available; browser voice otherwise. */
+const ttsCache=new Map();
+function rememberAudio(text,lang,b64,mime){if(text&&b64)ttsCache.set(lang+"|"+text,"data:"+(mime||"audio/wav")+";base64,"+b64)}
+async function backendAudio(text,lang){
+  const k=lang+"|"+text;if(ttsCache.has(k))return ttsCache.get(k);
+  if(!S.backend||S.offline)return null;
+  try{const fd=new FormData();fd.append("text",text);fd.append("lang",lang);
+    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
+    const r=await fetch(S.backend.replace(/\/$/,"")+"/api/tts",{method:"POST",body:fd,signal:ctl.signal});clearTimeout(tm);
+    if(r.status!==200)return null;const j=await r.json();rememberAudio(text,lang,j.audio_b64,j.audio_mime);return ttsCache.get(k)||null}
+  catch(e){return null}
+}
+async function speak(text){
+  if(!text)return;cancelSpeech();const seq=S.speakSeq;
+  const lang=(S.entry&&S.entry.lang)||S.lang;
+  const url=await backendAudio(text,lang);
+  if(seq!==S.speakSeq)return; // cancelled or superseded while fetching
+  if(url){const a=new Audio(url);a.playbackRate=S.speed*(S.prof==="ageing"?0.82:1);a.preservesPitch=true;S.audio=a;
+    a.onplay=()=>setSpeaking(true);a.onended=a.onerror=()=>{if(S.audio===a)S.audio=null;setSpeaking(false)};
+    a.play().catch(()=>{S.audio=null;browserSpeak(text,lang)});return}
+  browserSpeak(text,lang);
+}
+function browserSpeak(text,lang){
+  if(!hasTts)return;
+  const u=new SpeechSynthesisUtterance(text),code=LANGCODE[lang]||LANGCODE[S.lang];u.lang=code;
+  const v=pickVoice(code);if(v)u.voice=v;else if(lang!=="en"&&!S.ttsWarned){S.ttsWarned=true;toast(t("noTts"))}
+  u.rate=S.speed*(S.prof==="ageing"?0.82:1);
+  u.onstart=()=>setSpeaking(true);u.onend=u.onerror=()=>setSpeaking(false);
+  speechSynthesis.speak(u);
+}
+if(hasTts)speechSynthesis.onvoiceschanged=()=>{};
+function vibrate(p){try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+function flash(){const c=$("#answerCard");c.classList.remove("flash");void c.offsetWidth;c.classList.add("flash")}
+
+/* ---------- pipeline trace ---------- */
+function drawStages(state){
+  const ol=$("#stages");ol.innerHTML="";
+  STAGES.forEach((s,i)=>{const li=document.createElement("li");li.className=state[i]||"";
+    li.innerHTML='<span class="dot" aria-hidden="true"></span><span>'+s[0]+'</span><span class="ms">'+(state[i]==="done"?s[1]+" ms":state[i]==="fail"?"failed":"")+'</span>';ol.appendChild(li)});
+  $("#pipeNote").textContent="Demo timings are simulated.";
+}
+function runPipeline(instant,failAt){
+  return new Promise(res=>{
+    const st=[];
+    if(instant){STAGES.forEach((_,i)=>st[i]=failAt!=null&&i>=failAt?(i===failAt?"fail":""):(!S.blocked?"done":""));
+      if(S.blocked){for(let i=0;i<STAGES.length;i++)st[i]=i<2?"done":"";st[1]="fail"}drawStages(st);return res()}
+    let i=0;(function step(){
+      if(failAt!=null&&i===failAt){st[i]="fail";drawStages(st);return res()}
+      if(i>=STAGES.length){drawStages(st);return res()}
+      st[i]="run";drawStages(st);
+      setTimeout(()=>{st[i]="done";i++;step()},70);
+    })();
+  });
+}
+
+/* ---------- asking ---------- */
+function detect(q,sc){
+  for(const m of (sc.match||[]))if(m[1].test(q))return m[0];
+  return "read";
+}
+async function ask(query,opts){
+  opts=opts||{};query=(query||"").trim();S.userAct=!opts.auto;
+  if(!S.scene&&!S.blob){toast(t("pickFirst"));return}
+  cancelSpeech();$("#confirmBox").hidden=true;
+  if(S.blocked){showFailure(S.quality.cue);return}
+  S.lastQ=query;$("#ansQ").textContent=t("asked")+": "+query;
+  $("#ansTxt").textContent=t("thinking");$("#ansMore").hidden=true;
+  if(S.source!=="sample"){return askBackend(query)}
+  const sc=SCENES[S.scene],key=opts.key&&sc.ans[opts.key]?opts.key:detect(query,sc);S.lastKey=key;
+  if(S.offline){
+    await runPipeline(false,1);
+    const note=t("offline")+" "+sc.ocr.join(". ");
+    S.entry={a:note,s:note,m:"",failure:false,offline:true};S.variant="a";renderAnswer();setConf("c_fair");
+    if(!opts.silent)deliver(note);return;
+  }
+  await runPipeline(opts.auto);
+  const raw=sc.ans[key]||sc.ans.read;const trip=(typeof raw==="function"?raw():raw)[S.lang];
+  S.entry={a:trip[0],s:trip[1],m:trip[2],failure:false};
+  S.variant=S.prof==="ageing"?"s":"a";
+  $("#answerCard").classList.remove("fail");$("#bRetake").hidden=true;
+  renderAnswer();setConf(sc.conf);buildCompare();
+  if(!opts.silent)deliver(currentText());
+}
+async function askBackend(query){
+  if(!S.backend){S.entry={a:t("uploadDemo"),s:t("uploadDemo"),m:""};renderAnswer();return}
+  try{
+    await runPipeline(false);
+    const fd=new FormData();fd.append("image",S.blob,"sign.jpg");fd.append("query",query);fd.append("lang",S.lang);fd.append("profile",S.prof);
+    const r=await fetch(S.backend.replace(/\/$/,"")+"/api/ask",{method:"POST",body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(r.status);
+    S.backendRaw=j.raw_answer||"";rememberAudio(j.audio_text,j.lang||S.lang,j.audio_b64,j.audio_mime);
+    if(j.needs_retake){S.entry={a:j.retake_hint||t("fail_blur"),s:j.retake_hint||t("fail_blur"),m:"",failure:true,lang:j.lang};$("#answerCard").classList.add("fail");$("#bRetake").hidden=false;setConf("c_unclear")}
+    else{S.entry={a:j.answer,s:j.simple||j.answer,m:j.more||"",lang:j.lang};$("#answerCard").classList.remove("fail");$("#bRetake").hidden=true;setConf("c_"+(j.confidence==="high"?"clear":j.confidence==="low"?"unclear":"fair"));
+      if(j.read_text){$("#readBox").innerHTML='<b>'+t("readFrom")+'</b><p></p>';$("#readBox").lastChild.textContent=j.read_text;$("#readBox").hidden=false}}
+    S.variant=S.prof==="ageing"?"s":"a";renderAnswer();buildCompare();deliver(currentText());
+  }catch(e){
+    await runPipeline(true,1);
+    const note=t("offline");S.entry={a:note,s:note,m:""};renderAnswer();setConf("c_unclear");deliver(note);
+  }
+}
+
+/* ---------- answer rendering ---------- */
+function currentText(){if(!S.entry)return"";return S.variant==="s"?S.entry.s:S.entry.a}
+function renderAnswer(){
+  const e=S.entry;if(!e)return;
+  $("#ansTxt").textContent=currentText();
+  const more=$("#ansMore");
+  if(S.variant==="m"&&e.m){more.textContent=e.m;more.hidden=false}else more.hidden=true;
+  const off=$("#offer");off.textContent=t("offerMore");off.hidden=!(e.m&&S.variant!=="m"&&!e.failure);
+  $("#bMore").hidden=!e.m||e.failure;$("#bSimple").hidden=e.failure||!!e.offline;
+  if(S.lastQ&&!e.failure)$("#ansQ").textContent=t("asked")+": "+S.lastQ;
+  updateLive();
+}
+function updateLive(){$("#live").setAttribute("aria-live",(!S.muted&&S.prof==="visual"&&hasTts)?"off":"polite")}
+function deliver(text){
+  if(S.prof==="hearing"){vibrate([220,100,220]);flash()}
+  else if(!S.muted){speak(text)}
+}
+
+/* ---------- compare ---------- */
+function words(s){return s.trim().split(/\s+/).filter(Boolean).length}
+function buildCompare(){
+  const sc=SCENES[S.scene],fromBackend=S.source!=="sample",raw=fromBackend?S.backendRaw:sc&&sc.raw,box=$("#cmpBox");
+  if(!raw){box.innerHTML="";return}
+  const ours=currentText();
+  box.innerHTML='<div><h3>Plain assistant</h3><p class="rawp"></p><p class="w">'+words(raw)+' words'+(fromBackend?'':', key fact near the end')+'</p></div>'+
+    '<div><h3>SignSaathi</h3><p class="oursp" style="font-weight:700"></p><p class="w">'+words(ours)+' words, key fact first</p></div>';
+  box.querySelector(".rawp").textContent=raw;box.querySelector(".oursp").textContent=ours;
+}
+$("#bCmp").addEventListener("click",e=>{const b=e.currentTarget,open=b.getAttribute("aria-expanded")!=="true";b.setAttribute("aria-expanded",String(open));$("#cmpBox").hidden=!open;if(open)buildCompare()});
+
+/* ---------- controls ---------- */
+$("#bRepeat").addEventListener("click",()=>{S.userAct=true;S.sig.repeat++;if(S.entry)speak(S.variant==="m"&&S.entry.m?S.entry.m:currentText());
+  if(S.sig.repeat>=2)propose("ageing","ban_ageing")});
+$("#bSimple").addEventListener("click",()=>{S.userAct=true;if(!S.entry)return;S.variant="s";renderAnswer();buildCompare();deliver(currentText())});
+$("#bMore").addEventListener("click",()=>{S.userAct=true;if(!S.entry||!S.entry.m)return;S.variant="m";renderAnswer();deliver(S.entry.m)});
+$("#bStop").addEventListener("click",cancelSpeech);
+$("#bMute").addEventListener("click",e=>{S.muted=!S.muted;e.currentTarget.setAttribute("aria-pressed",String(S.muted));e.currentTarget.textContent=S.muted?t("unmute"):t("mute");
+  if(S.muted){cancelSpeech();propose("hearing","ban_hearing")}updateLive();saveSettings()});
+$("#bRetake").addEventListener("click",()=>{S.userAct=true;if(S.source==="sample"&&S.scene==="blur")loadScene("pharm");else startCamera()});
+$("#btnCam").addEventListener("click",startCamera);
+$("#btnCapture").addEventListener("click",()=>{S.userAct=true;capture()});
+$("#askForm").addEventListener("submit",e=>{e.preventDefault();S.sig.taps++;S.userAct=true;const v=$("#askIn").value;if(v.trim()){ask(v);$("#askIn").value=""}});
+
+/* voice in */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null;S.listening=false;
+function listen(){
+  S.userAct=true;cancelSpeech();
+  if(!SR){toast(t("noVoiceIn"));return}
+  if(S.listening&&rec){rec.stop();return}
+  rec=new SR();rec.lang=LANGCODE[S.lang];rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onstart=()=>{S.listening=true;$("#btnMic").setAttribute("aria-pressed","true");$("#micText").textContent=t("micOn");vibrate([40])};
+  rec.onend=()=>{S.listening=false;$("#btnMic").setAttribute("aria-pressed","false");$("#micText").textContent=t("mic")};
+  rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed")toast(t("micBlocked"))};
+  rec.onresult=e=>{
+    const r=e.results[0][0],text=r.transcript,conf=r.confidence;S.sig.voice++;
+    if(S.sig.voice>=2&&S.sig.taps===0)propose("visual","ban_visual");
+    if(conf&&conf<0.75){pendingText=text;$("#confirmText").textContent=t("heard")+" “"+text+"”. "+t("heardQ");$("#confirmBox").hidden=false;if(!S.muted)speak(t("heard")+" "+text+". "+t("heardQ"))}
+    else ask(text);
+  };
+  try{rec.start()}catch(e){toast(t("micBlocked"))}
+}
+let pendingText="";
+$("#btnMic").addEventListener("click",listen);
+$("#cYes").addEventListener("click",()=>{$("#confirmBox").hidden=true;ask(pendingText)});
+$("#cRetry").addEventListener("click",()=>{$("#confirmBox").hidden=true;listen()});
+
+/* ---------- profile, language, suggestions ---------- */
+function setProfile(p,fromBanner){
+  S.prof=p;document.body.className="p-"+p;
+  $$("#profSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.prof===p)));
+  if(p==="ageing"&&S.scale<1.25){S.scale=1.25;$("#setSize").value="1.25"}
+  if(p==="hearing"){S.muted=true;cancelSpeech()}else if(p==="visual"){S.muted=false}
+  $("#bMute").setAttribute("aria-pressed",String(S.muted));$("#bMute").textContent=S.muted?t("unmute"):t("mute");
+  $("#announce").hidden=p!=="hearing";
+  document.documentElement.style.fontSize=(S.scale*100)+"%";
+  if(S.entry&&S.scene&&!S.entry.failure){S.variant=p==="ageing"?"s":"a";renderAnswer()}
+  updateLive();saveSettings();
+}
+$$("#profSeg button").forEach(b=>b.addEventListener("click",()=>{S.sig.taps++;setProfile(b.dataset.prof)}));
+$$("#langSeg button").forEach(b=>b.addEventListener("click",()=>{
+  S.lang=b.dataset.lang;S.ttsWarned=false;$$("#langSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  applyI18n();$("#frameImg").alt=S.scene?t("s_"+S.scene):"";
+  if(S.scene&&S.source==="sample"&&!S.blocked){S.readHtml='<b>'+t("readFrom")+'</b><ul>'+SCENES[S.scene].ocr.map(l=>"<li>"+l+"</li>").join("")+'</ul>';$("#readBox").innerHTML=S.readHtml;
+    if(S.entry&&!S.entry.offline){ask(S.lastQ?t("q_"+S.lastKey)||S.lastQ:t("q_read"),{key:S.lastKey,silent:true,auto:true})}}
+  saveSettings();
+}));
+function propose(p,key){
+  if(S.prof===p||S.declined[p])return;S.pendingProf=p;$("#bannerText").textContent=t(key);$("#banner").hidden=false;
+}
+$("#bannerYes").addEventListener("click",()=>{if(S.pendingProf)setProfile(S.pendingProf);$("#banner").hidden=true});
+$("#bannerNo").addEventListener("click",()=>{if(S.pendingProf)S.declined[S.pendingProf]=true;$("#banner").hidden=true});
+
+/* hearing: announcement alert */
+$("#bAnn").addEventListener("click",()=>{
+  const n=$("#watchIn").value.trim()||"219",txt=t("ann"),hit=txt.toLowerCase().includes(n.toLowerCase());
+  $("#annTxt").textContent=txt+" "+(hit?t("annHit").replace("{n}",n):t("annMiss").replace("{n}",n));
+  if(hit){vibrate([400,150,400,150,400]);const c=$("#annTxt");c.classList.remove("flash");void c.offsetWidth;c.classList.add("flash")}
+});
+
+/* ---------- settings ---------- */
+function saveSettings(){store("lang",S.lang);store("prof",S.prof);store("speed",S.speed);store("scale",S.scale);store("backend",S.backend)}
+$("#openSettings").addEventListener("click",()=>{$("#settings").hidden=false;$("#setClose").focus()});
+function closeSettings(){$("#settings").hidden=true;$("#openSettings").focus()}
+$("#setClose").addEventListener("click",closeSettings);
+$("#settings").addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings()});
+$("#setSpeed").addEventListener("input",e=>{S.speed=+e.target.value;saveSettings()});
+$("#setSize").addEventListener("change",e=>{S.scale=+e.target.value;document.documentElement.style.fontSize=(S.scale*100)+"%";saveSettings()});
+$("#setOffline").addEventListener("change",e=>{S.offline=e.target.checked});
+$("#setBackend").addEventListener("change",e=>{S.backend=e.target.value.trim();saveSettings()});
+
+/* ---------- boot ---------- */
+(function boot(){
+  const l=store("lang");if(l&&T[l])S.lang=l;
+  const sp=parseFloat(store("speed"));if(sp)S.speed=sp,$("#setSpeed").value=sp;
+  const sc=parseFloat(store("scale"));if(sc)S.scale=sc,$("#setSize").value=String(sc);
+  S.backend=store("backend")||"";$("#setBackend").value=S.backend;
+  if(!S.backend&&location.protocol.indexOf("http")===0){
+    fetch("api/health").then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok&&!S.backend){S.backend=location.href.replace(/[^/]*$/,"").replace(/\/$/,"");$("#setBackend").placeholder=S.backend+" (detected)"}}).catch(()=>{})}
+  $$("#langSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.lang===S.lang)));
+  const pr=store("prof");setProfile(pr&&["visual","hearing","ageing"].includes(pr)?pr:"visual");
+  applyI18n();drawStages([]);
+  loadScene("bus").then(()=>ask(t("q_route"),{key:"route",silent:true,auto:true}));
+  if(window.__PWA&&"serviceWorker" in navigator&&location.protocol.indexOf("http")===0){try{navigator.serviceWorker.register("sw.js")}catch(e){}}
+})();
+})();
+</script>
+
+</body>
 </html>

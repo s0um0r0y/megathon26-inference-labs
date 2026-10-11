@@ -1,0 +1,10 @@
+{
+  "name": "SignSaathi",
+  "short_name": "SignSaathi",
+  "description": "Accessible, multilingual companion for city signage",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F1F5F1",
+  "theme_color": "#0E5A44",
+  "icons": [{"src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
